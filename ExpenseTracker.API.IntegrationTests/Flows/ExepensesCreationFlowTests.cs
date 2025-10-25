@@ -4,12 +4,10 @@ using ExpenseTracker.API.IntegrationTests.Setup.Auth;
 using ExpenseTracker.API.IntegrationTests.Setup.BaseTests.CollectionFixtures;
 using ExpenseTracker.API.IntegrationTests.Setup.Hosting;
 using ExpenseTracker.API.Models;
-using ExpenseTracker.API.Validations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Shouldly;
-using System;
 using System.Net;
 using System.Net.Http.Json;
 using Xunit.Abstractions;
@@ -231,7 +229,7 @@ namespace ExpenseTracker.API.IntegrationTests.Flows
             // Assert
             categoryUpdatedResponse.ShouldNotBeNull();
             var tripExpenses = categoryUpdatedResponse.Expenses.Sum(e => e.GetTotalAmount());
-            tripExpenses.ShouldBeLessThan(homeExpenseCategory.Budget);
+            tripExpenses.ShouldBeLessThanOrEqualTo(homeExpenseCategory.Budget);
         }
     }
 }

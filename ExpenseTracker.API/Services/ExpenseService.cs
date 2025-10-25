@@ -137,7 +137,7 @@ namespace ExpenseTracker.API.Services
             var calculatedAmount = expenseDto.Amount * rate;
             decimal newTotalExpenses = totalExpenses - (expense?.GetTotalAmount() ?? 0) + calculatedAmount;
 
-            if (newTotalExpenses > (category.Budget * rate))
+            if (newTotalExpenses > category.Budget)
             {
                 return ValidationResult.FailureResult(ExpenseErrorMessages.AmountExceedsBudget(calculatedAmount, category.Budget, newTotalExpenses));
             }
