@@ -1,0 +1,157 @@
+﻿@using Blazored.FluentValidation
+@using ExpenseTracker.UI.Models
+@using System.Globalization
+
+<MudDialog>
+    <TitleContent><span data-name="expense-form-title">@Title</span></TitleContent>
+    <DialogContent>
+        <EditForm Model="newExpense" OnValidSubmit="Submit">
+            <FluentValidationValidator @ref="fluentValidationValidator" />
+            <MudTextField Label="Opis" @bind-Value="newExpense.Description" For="@(() => newExpense.Description)" Immediate="true" Required="true" data-name="expense-form-description" />
+            <MudTextField Label="Kwota" @bind-Value="newExpense.Amount" For="@(() => newExpense.Amount)" Immediate="true" Required="true" data-name="expense-form-amount" Adornment="Adornment.End" AdornmentIcon="@GetAdornmentIcon()" AdornmentColor="@GetAdornmentColor()" AdornmentText="@GetAdornmentText()" />
+            <MudSelect Label="Waluta" @bind-Value="newExpense.Currency" For="@(() => newExpense.Currency)" Immediate="true" Required="true" data-name="expense-form-currency" Disabled="IsEditMode">
+                @foreach (var currency in Currencies)
+                {
+                    <MudSelectItem Value="@currency.Value">@currency.Key</MudSelectItem>
+                }
+            </MudSelect>
+            @if (IsEditMode)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" data-name="expense-form-existing-rate">
+                    Kurs w dniu wydatku: <span data-name="expense-form-rate-value">@(newExpense.RateString)</span>
+                </MudText>
+            }
+            else if (newExpense.Currency != default && Rates.TryGetValue(newExpense.Currency, out var rate))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" data-name="expense-form-rate">
+                    Kurs: <span data-name="expense-form-rate-value">@rate.ToRoundUpCurrencyString()</span>
+                </MudText>
+            }
+            <MudSelect Label="Kategoria" @bind-Value="newExpense.CategoryId" For="@(() => newExpense.CategoryId)" Immediate="true" Required="true" data-name="expense-form-category" >
+                <MudSelectItem Value="0" Disabled>-- Wybierz kategorię --</MudSelectItem>
+                @foreach (var category in Categories)
+                {
+                    <MudSelectItem Value="@category.Id">@category.Name @category.Budget.ToString("C", new CultureInfo("pl-PL"))</MudSelectItem>
+                }
+            </MudSelect>
+        </EditForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" Disabled="@(!CanSave())" @onclick="Submit" data-name="expense-form-submit">Zapisz</MudButton>
+        <MudButton Color="Color.Default" @onclick="Cancel" data-name="expense-form-cancel" >Anuluj</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string Title { get; set; } = "Dodaj wydatek";
+
+    [Parameter]
+    public IEnumerable<CategoryDTO> Categories { get; set; } = Enumerable.Empty<CategoryDTO>();
+
+    [Parameter]
+    public ExpenseDTO? Expense { get; set; } = null;
+
+    [Parameter]
+    public bool IsEditMode { get; set; } = false;
+
+    [Parameter]
+    public IReadOnlyDictionary<Currency, decimal> Rates { get; set; } = new Dictionary<Currency, decimal>();
+
+    public IReadOnlyDictionary<string, Currency> Currencies => Enum.GetValues<Currency>().Select(currencyValue => new
+    {
+        Key = Enum.GetName(currencyValue)!,
+        Value = currencyValue
+    }).ToDictionary(o => o.Key, o => o.Value);
+
+    private FluentValidationValidator fluentValidationValidator = null!;
+    private ExpenseDTO newExpense = new ExpenseDTO();
+
+    protected override void OnParametersSet()
+    {
+        if (Expense is not null)
+        {
+            newExpense.Id = Expense.Id;
+            newExpense.Amount = Expense.Amount;
+            newExpense.Currency = Expense.Currency;
+            newExpense.Rate = Expense.Rate;
+            newExpense.Description = Expense.Description;
+            newExpense.CategoryId = Expense.CategoryId;
+        }
+    }
+
+    private bool CanSave()
+    {
+        return IsEditMode || newExpense.Currency == default
+                || Rates.TryGetValue(newExpense.Currency, out var rate);
+    }
+
+    private void Submit()
+    {
+        if (!fluentValidationValidator.Validate())
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(newExpense));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private string? GetAdornmentIcon()
+    {
+        if (IsEditMode || !IsRateMissing())
+        {
+            return null;
+        }
+
+        return Icons.Material.Filled.Warning;
+    }
+
+    private Color GetAdornmentColor()
+    {
+        if (!IsEditMode && IsRateMissing())
+        {
+            return Color.Warning;
+        }
+
+        return Color.Primary;
+    }
+
+    private string GetAdornmentText()
+    {
+        if (!IsEditMode && IsRateMissing())
+        {
+            return "Brak kursu waluty";
+        }
+
+        return GetConvertedAmountLabel();
+    }
+
+    private string GetConvertedAmountLabel()
+    {
+        if (IsEditMode)
+        {
+            return newExpense.TotalAmountString;
+        }
+
+        if (newExpense.Currency == default
+            || !Rates.TryGetValue(newExpense.Currency, out var rate)
+            || newExpense.Amount <= 0)
+        {
+            return string.Empty;
+        }
+
+        var valueInPln = newExpense.Amount * rate;
+        return valueInPln.ToRoundUpCurrencyString();
+    }
+
+    private bool IsRateMissing()
+    {
+        return newExpense.Currency != default
+            && (!Rates.TryGetValue(newExpense.Currency, out var rate) || rate <= 0);
+    }
+}

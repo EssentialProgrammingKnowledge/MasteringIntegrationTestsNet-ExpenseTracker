@@ -1,0 +1,267 @@
+@ExpenseTracker.API_HostAddress = http://localhost:5000/api
+@ExpensesAPI = {{ExpenseTracker.API_HostAddress}}/Expenses
+@CategoriesAPI = {{ExpenseTracker.API_HostAddress}}/Categories
+@LoginAPI = {{ExpenseTracker.API_HostAddress}}/Auth/Login
+@UsersAPI = {{ExpenseTracker.API_HostAddress}}/Users
+
+#### Login API
+### Login rquest User Staszek
+# @name loginStaszek
+POST {{LoginAPI}}
+Accept: application/json
+Content-Type: application/json
+
+{
+  "Email": "stanislaw.wokulski@gmail.com",
+  "Password": "Stachu123!Abc"
+}
+
+### Login rquest User Alicja
+# @name loginAlicja
+POST {{LoginAPI}}
+Accept: application/json
+Content-Type: application/json
+
+{
+  "Email": "alicja@krainaczarow.com",
+  "Password": "Czarodziejka123!"
+}
+
+### Invalid Login rquest
+POST {{LoginAPI}}
+Accept: application/json
+Content-Type: application/json
+
+{
+  "Email": "admin@admin.pl1",
+  "Password": ""
+}
+
+### Set access tokens
+@StaszekAccessToken = {{loginStaszek.response.body.$.accessToken}}
+@AlicjaAccessToken = {{loginAlicja.response.body.$.accessToken}}
+
+#### Users API
+### Get UserInfo
+GET {{UsersAPI}}/me
+Authorization: Bearer {{StaszekAccessToken}}
+
+#### Users API
+### Get UserInfo
+GET {{UsersAPI}}/me
+Authorization: Bearer {{AlicjaAccessToken}}
+
+#### Categories API
+### Get Categories
+GET {{CategoriesAPI}}
+Accept: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+### Get Categories
+GET {{CategoriesAPI}}
+Accept: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+### Add Category
+# @name addCategoryStaszek
+POST {{CategoriesAPI}}
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+{
+  "name": "Bud¿et na drogê",
+  "budget": 1500.50
+}
+
+### Add Category
+# @name addCategoryAlicja
+POST {{CategoriesAPI}}
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+{
+  "name": "Bud¿et na drogê",
+  "budget": 1500.50
+}
+
+### New CategoryId 
+@CategoryStaszekId = {{addCategoryStaszek.response.body.$.id}}
+@CategoryAlicjaId = {{addCategoryAlicja.response.body.$.id}}
+
+### Get Category By Id
+GET {{CategoriesAPI}}/{{CategoryStaszekId}}
+Accept: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+### Get Category By Id
+GET {{CategoriesAPI}}/{{CategoryAlicjaId}}
+Accept: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+### Update Category
+PUT {{CategoriesAPI}}/{{CategoryStaszekId}}
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+{
+  "name": "Bud¿et na drogê",
+  "budget": 1500.50
+}
+
+### Update Category
+PUT {{CategoriesAPI}}/{{CategoryAlicjaId}}
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+{
+  "name": "Bud¿et na drogê",
+  "budget": 1500.50
+}
+
+### Get Category By Id
+GET {{CategoriesAPI}}/{{CategoryStaszekId}}
+Accept: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+### Get Category By Id
+GET {{CategoriesAPI}}/{{CategoryAlicjaId}}
+Accept: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+### Add Category To Delete
+# @name addCategoryStaszekToDelete
+POST {{CategoriesAPI}}
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+{
+  "name": "Bud¿et na drogê",
+  "budget": 1500.50
+}
+
+### Add Category To Delete
+# @name addCategoryAlicjaToDelete
+POST {{CategoriesAPI}}
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+{
+  "name": "Bud¿et na drogê",
+  "budget": 1500.50
+}
+
+### New CategoryId ToDelete
+@CategoryStaszekIdToDelete = {{addCategoryStaszekToDelete.response.body.$.id}}
+@CategoryAlicjaIdToDelete = {{addCategoryAlicjaToDelete.response.body.$.id}}
+
+### Delete Category
+DELETE {{CategoriesAPI}}/{{CategoryStaszekIdToDelete}}
+Accept: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+### Delete Category
+DELETE {{CategoriesAPI}}/{{CategoryAlicjaIdToDelete}}
+Accept: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+#### Expenses API
+
+### Get Expenses
+GET {{ExpensesAPI}}
+Accept: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+### Get Expenses
+GET {{ExpensesAPI}}
+Accept: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+### Add Expense
+# @name addExpenseStaszek
+POST {{ExpensesAPI}}
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+{
+  "amount": 100.50,
+  "categoryId": {{CategoryStaszekId}},
+  "description": "Wydatek na paliwo"
+}
+
+### Add Expense
+# @name addExpenseAlicja
+POST {{ExpensesAPI}}
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+{
+  "amount": 100.50,
+  "categoryId": {{CategoryAlicjaId}},
+  "description": "Wydatek na paliwo"
+}
+
+### New Expense
+@ExpenseStaszekId = {{addExpenseStaszek.response.body.$.id}}
+@ExpenseAlicjaId = {{addExpenseAlicja.response.body.$.id}}
+
+### Get Expense By Id
+GET {{ExpensesAPI}}/{{ExpenseStaszekId}}
+Accept: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+### Get Expense By Id
+GET {{ExpensesAPI}}/{{ExpenseAlicjaId}}
+Accept: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+### Update Expense
+PUT {{ExpensesAPI}}/{{ExpenseStaszekId}}
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+{
+  "amount": 1000.50,
+  "categoryId": {{CategoryStaszekId}},
+  "description": "Wydatek na paliwo"
+}
+
+### Update Expense
+PUT {{ExpensesAPI}}/{{ExpenseAlicjaId}}
+Accept: application/json
+Content-Type: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+{
+  "amount": 1000.50,
+  "categoryId": {{CategoryAlicjaId}},
+  "description": "Wydatek na paliwo"
+}
+
+### Get Expense By Id
+GET {{ExpensesAPI}}/{{ExpenseStaszekId}}
+Accept: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+### Get Expense By Id
+GET {{ExpensesAPI}}/{{ExpenseAlicjaId}}
+Accept: application/json
+Authorization: Bearer {{AlicjaAccessToken}}
+
+### Delete Expense
+DELETE {{ExpensesAPI}}/{{ExpenseStaszekId}}
+Accept: application/json
+Authorization: Bearer {{StaszekAccessToken}}
+
+### Delete Expense
+DELETE {{ExpensesAPI}}/{{ExpenseAlicjaId}}
+Accept: application/json
+Authorization: Bearer {{AlicjaAccessToken}}

@@ -1,0 +1,52 @@
+﻿@page "/login"
+@using Blazored.FluentValidation
+@using ExpenseTracker.UI.Authentication
+@using ExpenseTracker.UI.Languages
+@using ExpenseTracker.UI.Models
+@using ExpenseTracker.UI.Services
+@inject NavigationManager NavigationManager
+@inject IAuthService AuthService
+@inject ISnackbar Snackbar
+@inject ITranslateService TranslateService
+@inject IAuthStateService AuthStateService
+
+<MudPaper Class="pa-6 mx-auto mt-12" MaxWidth="400px" Elevation="8">
+    <MudText Typo="Typo.h5" Class="mb-4" data-name="login-text">Logowanie</MudText>
+
+    <EditForm Model="@model" OnValidSubmit="HandleLogin" data-name="login-form">
+        <FluentValidationValidator />
+
+        <MudTextField @bind-Value="model.Email" Label="Email" For="@(() => model.Email)" data-name="login-form-email" />
+        <MudTextField @bind-Value="model.Password" Label="Hasło" For="@(() => model.Password)" InputType="InputType.Password" data-name="login-form-password" />
+
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-4" FullWidth="true" ButtonType="ButtonType.Submit" data-name="login-form-submit-button" >
+            Zaloguj się
+        </MudButton>
+    </EditForm>
+
+    <MudText Class="mt-4" data-name="login-form-account-not-exists">
+        Nie masz konta?
+        <MudLink Href="/register" data-name="login-form-register-link">Zarejestruj się</MudLink>
+    </MudText>
+</MudPaper>
+
+@code {
+    private LoginDTO model = new();
+
+    private async Task HandleLogin()
+    {
+        var result = await AuthService.Login(model);
+        if (!result.Valid)
+        {
+            if (result.ErrorMessage is not null)
+            {
+                Snackbar.Add(TranslateService.Translate(result.ErrorMessage), Severity.Error);
+            }
+
+            return;
+        }
+
+        await AuthStateService.LoginAsync(result.Data!.AccessToken);
+        NavigationManager.NavigateTo("/");
+    }
+}

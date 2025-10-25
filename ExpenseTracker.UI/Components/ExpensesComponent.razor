@@ -1,0 +1,371 @@
+﻿@using ExpenseTracker.UI.Languages
+@using ExpenseTracker.UI.Models
+@using ExpenseTracker.UI.Services
+@inject IDialogService DialogService
+@inject ICategoryService CategoryService
+@inject IExpenseService ExpenseService
+@inject ISnackbar Snackbar
+@inject ITranslateService TranslateService
+@inject IRateService RateService
+
+<MudContainer>
+    @if (isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" data-name="expenses-loading-icon" />
+    }
+    else
+    {
+        <MudButton Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" @onclick="AddNewExpense" data-name="expenses-add-button">Dodaj wydatek</MudButton>
+
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="4">
+                <MudTextField @bind-Value="searchQuery" TextChanged="OnSearchExpense" Immediate="true" Label="Szukaj po opisie" Adornment="Adornment.Start" data-name="expenses-search-input" />
+            </MudItem>
+        </MudGrid>
+
+        <MudTable Items="expensesToShow" Striped="true" Hover="true" Bordered="true" data-name="expenses-table">
+            <HeaderContent>
+                <MudTh>Id</MudTh>
+                <MudTh>Całkowita kwota</MudTh>
+                <MudTh>Kwota</MudTh>
+                <MudTh>Waluta</MudTh>
+                <MudTh>Kurs</MudTh>
+                <MudTh>Opis</MudTh>
+                <MudTh>Kategoria</MudTh>
+                <MudTh>Akcje</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd data-name="expenses-column-id" DataLabel="Id">@context.Id</MudTd>
+                <MudTd data-name="expenses-column-total-amount" DataLabel="TotalAmount">@context.TotalAmountString</MudTd>
+                <MudTd data-name="expenses-column-amount" DataLabel="Amount">@context.AmountString</MudTd>
+                <MudTd data-name="expenses-column-currency" DataLabel="Currency">@context.Currency</MudTd>
+                <MudTd data-name="expenses-column-rate" DataLabel="Rate">@context.RateString</MudTd>
+                <MudTd data-name="expenses-column-description" DataLabel="Description">@context.Description</MudTd>
+                <MudTd data-name="expenses-column-category-id" DataLabel="Category">@context.CategoryId</MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudTooltip Text="Edytuj wydatek" Placement="Placement.Top" data-name="expenses-column-edit-tooltip">
+                        <MudIconButton data-name="expenses-column-edit" @onclick="() => EditExpense(context.Id)" Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" />
+                    </MudTooltip>
+                    <MudTooltip Text="Usuń wydatek" Placement="Placement.Top" data-name="expenses-column-delete-tooltip">
+                        <MudIconButton data-name="expenses-column-delete" @onclick="() => DeleteExpense(context.Id)" Icon="@Icons.Material.Filled.Delete" Color="Color.Error" />
+                    </MudTooltip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private string searchQuery = string.Empty;
+    private List<ExpenseDTO> expenses = new List<ExpenseDTO>();
+    private List<ExpenseDTO> expensesToShow = new List<ExpenseDTO>();
+    private readonly MessageBoxOptions _deleteModalContent = new MessageBoxOptions
+    {
+        Title = "Usuń wydatek",
+        Message = "Czy chcesz usunąć wydatek?",
+        YesText = "Tak",
+        NoText = "Nie"
+    };
+    private readonly DialogOptions _deleteModalOptions = new DialogOptions
+    {
+        BackdropClick = false,
+        CloseOnEscapeKey = true,
+        Position = DialogPosition.Center
+    };
+    private readonly DialogOptions _expenseFormModalOptions = new DialogOptions
+    { 
+        MaxWidth = MaxWidth.Medium, 
+        FullWidth = true,
+        BackdropClick = false,
+        CloseOnEscapeKey = false,
+        Position = DialogPosition.Center
+    };
+    private bool _isLoading = true;
+    private bool isLoading
+    {
+        get => _isLoading;
+        set
+        {
+            if (_isLoading != value)
+            {
+                _isLoading = value;
+                InvokeAsync(StateHasChanged);
+            }
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadExpenses();
+    }
+
+    private void OnSearchExpense(string term)
+    {
+        expensesToShow = expenses
+            .Where(p => p.Description.Contains(term, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private async Task AddNewExpense()
+    {
+        var categoriesTask = LoadCategories();
+        var ratesTask = LoadRates();
+        await Task.WhenAll(categoriesTask, ratesTask);
+        var categories = categoriesTask.Result;
+        var rates = ratesTask.Result.ToDictionary(k => k.Currency, v => v.Rate) ?? [];
+        var dialogReference = await DialogService.ShowAsync<ExpenseFormComponent>("Dodaj wydatek", new DialogParameters
+        {
+            { "Categories", categories },
+            { "Rates", rates }
+        }, _expenseFormModalOptions);
+        var result = await dialogReference.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        var dto = result.Data as ExpenseDTO;
+        if (dto is null)
+        {
+            return;
+        }
+
+        await SaveExpense(dto);
+    }
+
+    private async Task DeleteExpense(int id)
+    {
+        var messageBoxValue = await DialogService.ShowMessageBox(_deleteModalContent, _deleteModalOptions);
+        if (!messageBoxValue.HasValue || !messageBoxValue.Value)
+        {
+            return;
+        }
+
+        try
+        {
+            isLoading = true;
+            var result = await ExpenseService.Delete(id);
+            if (!result.Valid)
+            {
+                if (result.ErrorMessage is not null)
+                {
+                    Snackbar.Add(TranslateService.Translate(result.ErrorMessage), Severity.Error);
+                }
+
+                return;
+            }
+
+            Snackbar.Add("Pomyślnie usunięto wydatek", Severity.Success);
+            await RefreshExpenses();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task EditExpense(int id)
+    {
+        var categoriesTask = LoadCategories();
+        var expenseTask = LoadExpense(id);
+        await Task.WhenAll(categoriesTask, expenseTask);
+        var categories = categoriesTask.Result;
+        var expense = expenseTask.Result;
+        if (expense is null)
+        {
+            await LoadExpenses();
+            return;
+        }
+
+        var dialogReference = await DialogService.ShowAsync<ExpenseFormComponent>("Edytuj wydatek", new DialogParameters
+        {
+            { "Categories", categories },
+            { "Expense", expense.ToDto() },
+            { "Title", "Edytuj wydatek" },
+            { "IsEditMode", true },
+        }, _expenseFormModalOptions);
+        var result = await dialogReference.Result;
+
+        if (result is null || result.Canceled)
+        {
+            return;
+        }
+
+        var dto = result.Data as ExpenseDTO;
+        if (dto is null)
+        {
+            return;
+        }
+
+        dto.Description = expense.Description;
+        await UpdateExpense(dto);
+    }
+
+    private async Task LoadExpenses()
+    {
+        try
+        {
+            isLoading = true;
+            var result = await ExpenseService.GetAll();
+            if (!result.Valid)
+            {
+                if (result.ErrorMessage is not null)
+                {
+                    Snackbar.Add(TranslateService.Translate(result.ErrorMessage), Severity.Error);
+                }
+
+                return;
+            }
+
+            expenses = result.Data ?? [];
+            expensesToShow = expenses;
+        }
+        catch
+        {
+            Snackbar.Add("Wystąpił błąd podczas pobierania wydatków. Prosimy spróbować ponownie później", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task<List<CategoryDTO>> LoadCategories()
+    {
+        try
+        {
+            var result = await CategoryService.GetAll();
+            if (!result.Valid)
+            {
+                if (result.ErrorMessage is not null)
+                {
+                    Snackbar.Add(TranslateService.Translate(result.ErrorMessage), Severity.Error);
+                }
+
+                return [];
+            }
+
+            return result.Data ?? [];
+        }
+        catch
+        {
+            Snackbar.Add("Wystąpił błąd podczas pobierania kateogrii. Prosimy spróbować ponownie później", Severity.Error);
+        }
+
+        return [];
+    }
+
+    private async Task<List<RateDTO>> LoadRates()
+    {
+        try
+        {
+            var result = await RateService.GetAll();
+            if (!result.Valid)
+            {
+                if (result.ErrorMessage is not null)
+                {
+                    Snackbar.Add(TranslateService.Translate(result.ErrorMessage), Severity.Error);
+                }
+
+                return [];
+            }
+
+            return result.Data ?? [];
+        }
+        catch
+        {
+            Snackbar.Add("Wystąpił błąd podczas pobierania kursów walut. Prosimy spróbować ponownie później", Severity.Error);
+        }
+
+        return [];
+    }
+
+    private async Task<ExpenseDetailsDTO?> LoadExpense(int id)
+    {
+        try 
+        {
+            var result = await ExpenseService.GetById(id);
+            if (!result.Valid)
+            {
+                if (result.ErrorMessage is not null)
+                {
+                    Snackbar.Add(TranslateService.Translate(result.ErrorMessage), Severity.Error);
+                }
+
+                return null;
+            }
+
+            return result.Data;
+        }
+        catch
+        {
+            Snackbar.Add("Wystąpił błąd podczas pobierania danych o wydatku. Prosimy spróbować ponownie później", Severity.Error);
+            return null;
+        }
+    }
+
+    private async Task SaveExpense(ExpenseDTO newExpense)
+    {
+        try
+        {
+            isLoading = true;
+            var result = await ExpenseService.Add(newExpense);
+            if (!result.Valid)
+            {
+                if (result.ErrorMessage is not null)
+                {
+                    Snackbar.Add(TranslateService.Translate(result.ErrorMessage), Severity.Error);
+                }
+
+                return;
+            }
+
+            Snackbar.Add("Pomyślnie dodano wydatek", Severity.Success);
+            await RefreshExpenses();
+        }
+        catch
+        {
+            Snackbar.Add("Wystąpił błąd podczas dodawania wydatku. Prosimy spróbować ponownie później", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task UpdateExpense(ExpenseDTO expense)
+    {
+        try
+        {
+            isLoading = true;
+            var result = await ExpenseService.Update(expense);
+            if (!result.Valid)
+            {
+                if (result.ErrorMessage is not null)
+                {
+                    Snackbar.Add(TranslateService.Translate(result.ErrorMessage), Severity.Error);
+                }
+
+                return;
+            }
+
+            Snackbar.Add("Pomyślnie zaaktualizowano wydatek", Severity.Success);
+            await RefreshExpenses();
+        }
+        catch
+        {
+            Snackbar.Add("Wystąpił błąd podczas aktualizacji wydatku. Prosimy spróbować ponownie później", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RefreshExpenses()
+    {
+        await LoadExpenses();
+        OnSearchExpense(searchQuery);
+    }
+}

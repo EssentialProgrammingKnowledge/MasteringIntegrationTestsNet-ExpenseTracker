@@ -1,0 +1,33 @@
+﻿@page "/profile"
+@using ExpenseTracker.UI.Authentication;
+@using ExpenseTracker.UI.Models
+@attribute [Authorize]
+@inject IAuthStateService AuthStateService
+
+<PageTitle>Profil</PageTitle>
+
+<MudPaper Class="pa-4 mx-auto mt-6" MaxWidth="500px">
+    <MudText Typo="Typo.h5">Profil użytkownika</MudText>
+    <MudDivider Class="my-2" />
+
+    @if (user != null)
+    {
+        <MudText data-name="profile-first-name"><b>Imię:</b> @user.FirstName</MudText>
+        <MudText data-name="profile-last-name"><b>Nazwisko:</b> @user.LastName</MudText>
+        <MudText data-name="profile-email"><b>Email:</b> @user.Email</MudText>
+    }
+    else
+    {
+        <MudText data-name="profile-empty-user-data">Brak danych użytkownika.</MudText>
+    }
+</MudPaper>
+
+
+@code {
+    private UserProfile? user;
+
+    protected override void OnInitialized()
+    {
+        user = AuthStateService.GetUserProfile();
+    }
+}
