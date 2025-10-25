@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpenseTracker.UI", "Expens
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpenseTracker.API.IntegrationTests", "ExpenseTracker.API.IntegrationTests\ExpenseTracker.API.IntegrationTests.csproj", "{F9C4FF95-FCD8-4CD3-BC7C-D7DAF030289A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpenseTracker.UI.IntegrationTests", "ExpenseTracker.UI.IntegrationTests\ExpenseTracker.UI.IntegrationTests.csproj", "{318AA662-7919-4C23-9AA3-DB54AA848BD4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
