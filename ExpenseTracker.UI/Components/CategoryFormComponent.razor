@@ -2,7 +2,7 @@
 @using ExpenseTracker.UI.Models
 
 <MudDialog>
-    <TitleContent><span data-name="category-form-title">@(Category is not null && Category.Id > 0 ? "Edytuj kategorię" : "Dodaj kategorię")</span></TitleContent>
+    <TitleContent><span data-name="category-form-title">@Title</span></TitleContent>
     <DialogContent>
         <EditForm Model="newCategory" OnValidSubmit="() => MudDialog.Close(DialogResult.Ok(newCategory))">
             <FluentValidationValidator @ref="fluentValidationValidator" />
@@ -11,8 +11,8 @@
         </EditForm>
     </DialogContent>
     <DialogActions>
-        <MudButton Color="Color.Primary" OnClick="() => { if (fluentValidationValidator.Validate()) { newCategory.Budget += 1; MudDialog.Close(DialogResult.Ok(newCategory)); } }" data-name="category-form-submit">Zapisz</MudButton>
-        <MudButton Color="Color.Default" OnClick="() => MudDialog.Cancel()" data-name="category-form-cancel">Anuluj</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" data-name="category-form-submit">Zapisz</MudButton>
+        <MudButton Color="Color.Default" OnClick="Cancel" data-name="category-form-cancel">Anuluj</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -22,10 +22,10 @@
     private IMudDialogInstance MudDialog { get; set; } = null!;
 
     [Parameter]
-    public CategoryDTO? Category { get; set; } = null;
+    public string Title { get; set; } = "Dodaj kategorię";
 
     [Parameter]
-    public string Title { get; set; } = string.Empty;
+    public CategoryDTO? Category { get; set; } = null;
 
     private CategoryDTO newCategory = new();
     private FluentValidationValidator fluentValidationValidator = null!;
@@ -39,4 +39,16 @@
             newCategory.Budget = Category.Budget;
         }
     }
+
+    private void Submit()
+    {
+        if (!fluentValidationValidator.Validate())
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(newCategory));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
 }
