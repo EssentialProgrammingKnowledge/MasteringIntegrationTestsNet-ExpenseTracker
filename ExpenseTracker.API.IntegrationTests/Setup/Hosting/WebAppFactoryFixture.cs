@@ -7,6 +7,7 @@ using ExpenseTracker.API.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -20,12 +21,16 @@ namespace ExpenseTracker.API.IntegrationTests.Setup.Hosting
         public Action<string, LogLevel, string>? LogAction { get; set; }
 
         private readonly string _databaseName = $"expense-tracker-test-db-{Guid.NewGuid()}";
-        private readonly Mock<INbpRatesService> _nbpRatesSevice = new();
+        private readonly Mock<INbpRatesService> _nbpRatesSevice = new(); 
+        private readonly bool _dropDatabase = true;
+        private bool _disposed;
 
         public WebAppFactoryFixture()
         {
             Client = CreateClient();
             UserAccessor = Services.GetRequiredService<TestUserAccessor>();
+            var config = Services.GetRequiredService<IConfiguration>();
+            _dropDatabase = config.GetValue<bool>("DropDatabase");
         }
 
         public void SetupNbpRateService(Action<Mock<INbpRatesService>> setup)
@@ -53,7 +58,13 @@ namespace ExpenseTracker.API.IntegrationTests.Setup.Hosting
 
         protected override void Dispose(bool disposing)
         {
-            if (disposing)
+            if (_disposed)
+            {
+                return;
+            }
+
+            LogAction = null;
+            if (_dropDatabase)
             {
                 using var scope = Services.CreateScope();
                 var dbContext = scope.ServiceProvider.GetRequiredService<ExpenseContext>();

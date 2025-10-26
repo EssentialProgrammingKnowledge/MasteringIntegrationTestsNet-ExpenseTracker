@@ -27,6 +27,7 @@ namespace ExpenseTracker.API.IntegrationTests.Setup.Hosting
         private readonly TestServer _server;
         private readonly string _databaseName = $"expense-tracker-test-db-{Guid.NewGuid()}";
         private readonly Mock<INbpRatesService> _nbpRatesService = new();
+        private readonly bool _dropDatabase = true;
 
         public TestServerFixture()
         {
@@ -82,6 +83,8 @@ namespace ExpenseTracker.API.IntegrationTests.Setup.Hosting
             Client = _server.CreateClient();
             Services = _server.Host.Services;
             UserAccessor = Services.GetRequiredService<TestUserAccessor>();
+            var config = Services.GetRequiredService<IConfiguration>();
+            _dropDatabase = config.GetValue<bool>("DropDatabase");
         }
 
         public void SetupNbpRateService(Action<Mock<INbpRatesService>> setup)
@@ -89,9 +92,14 @@ namespace ExpenseTracker.API.IntegrationTests.Setup.Hosting
 
         public void Dispose()
         {
-            Client.Dispose();
-            using var dbContext = _server.Services.GetRequiredService<ExpenseContext>();
-            dbContext.Database.EnsureDeleted();
+            LogAction = null;
+            if (_dropDatabase)
+            {
+                using var dbContext = _server.Services.GetRequiredService<ExpenseContext>();
+                dbContext.Database.EnsureDeleted();
+            }
+
+            Client?.Dispose();
             _server.Dispose();
         }
     }

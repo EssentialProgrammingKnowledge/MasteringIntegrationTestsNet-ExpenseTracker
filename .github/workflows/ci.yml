@@ -1,0 +1,114 @@
+name: Build Application
+
+on:
+  workflow_dispatch: # run manually from GitHub UI
+    inputs:
+      branch:
+        description: "Optional branch name (leave empty for current)"
+        required: false
+        default: ""
+  push:
+     branches: [ master, develop ]
+
+jobs:
+  build-and-test:
+    name: 🧪 Build & Run Integration Tests
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      checks: write
+
+    env:
+      POSTGRES_USER: sa
+      POSTGRES_PASSWORD: YourStrong!Passw0rd
+      POSTGRES_DB: ExpenseTracker_Test
+      PROVIDER: PostgreSQL
+
+    services:
+      postgres:
+        image: postgres:15
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+        options: >-
+          --health-cmd="pg_isready -U sa"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+      - name: 🧰 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: 🧩 Build connection string
+        run: |
+          echo "CONNECTION_STRING=Server=localhost;Database=${POSTGRES_DB};User Id=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};" >> $GITHUB_ENV
+
+      - name: 📦 Restore dependencies
+        run: dotnet restore
+
+      - name: 🏗️ Build solution
+        run: dotnet build --no-restore --configuration Release
+
+      - name: 🧪 Run integration tests only
+        env:
+          DatabaseSettings__Provider: ${{ env.PROVIDER }}
+          DatabaseSettings__ConnectionString: ${{ env.CONNECTION_STRING }}
+          DropDatabase: false
+        run: |
+          set +e # do not break when error occurred
+          mkdir -p ./TestResults
+          overall_status=0
+          for proj in $(find . -name '*.IntegrationTests.csproj'); do
+            echo "----------------------------------------"
+            echo "🚀 Running tests in $proj"
+            name=$(basename "$proj")
+
+            # run tests
+            dotnet test "$proj" --no-build --configuration Release \
+              --logger "trx;LogFileName=${name}.trx" \
+              --results-directory "./TestResults"
+            
+            status=$?
+            if [ $status -ne 0 ]; then
+              echo "❌ Tests failed in $proj"
+              overall_status=1
+            else
+              echo "✅ Tests passed in $proj"
+            fi
+          done
+
+          # if any project with tests failed then stop
+          echo "----------------------------------------"
+          if [ $overall_status -ne 0 ]; then
+            echo "🔥 Some integration tests failed!"
+            exit 1
+          else
+            echo "✅ All integration tests passed successfully!"
+            exit 0
+          fi
+
+      - name: 📊 Publish test results to summary
+        uses: dorny/test-reporter@v1
+        if: always() # always even if tests failed
+        with:
+          name: Integration Test Results
+          path: "**/TestResults/*.trx"
+          reporter: dotnet-trx
+          fail-on-error: false
+
+      - name: 📤 Upload raw test results (artifacts)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: "**/TestResults/*.trx"

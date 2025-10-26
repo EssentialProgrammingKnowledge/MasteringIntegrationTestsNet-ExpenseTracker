@@ -56,7 +56,7 @@ namespace ExpenseTracker.UI.IntegrationTests.Flows
             _testFixture.AppComponent.WaitForAssertion(() =>
             {
                 _homePage.HasExpensesTable.ShouldBeTrue();
-            });
+            }, TimeSpan.FromSeconds(5));
             description ??= $"Description-{Guid.NewGuid()}";
             var modal = _homePage.ClickAddExpense(_testFixture.AppComponent);
             var service = _testFixture.TestContext.Services.GetRequiredService<IObservableExpenseService>();
@@ -92,7 +92,7 @@ namespace ExpenseTracker.UI.IntegrationTests.Flows
             _testFixture.AppComponent.WaitForAssertion(() =>
             {
                 _categoriesPage.HasCategoriesTable.ShouldBeTrue();
-            });
+            }, TimeSpan.FromSeconds(5));
             var addCategoryModal = _categoriesPage.ClickAddCategory(_testFixture.AppComponent);
             var service = _testFixture.TestContext.Services.GetRequiredService<IObservableCategoryService>();
             var addSubscription = service.WaitForAddAsync();

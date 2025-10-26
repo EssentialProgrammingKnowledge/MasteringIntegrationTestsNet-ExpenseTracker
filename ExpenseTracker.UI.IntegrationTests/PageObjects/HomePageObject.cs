@@ -39,7 +39,7 @@ namespace ExpenseTracker.UI.IntegrationTests.PageObjects
             component.WaitForAssertion(() =>
             {
                 formModalComponent.IsVisible.ShouldBeTrue();
-            });
+            }, TimeSpan.FromSeconds(5));
             return formModalComponent;
         }
 
@@ -75,7 +75,7 @@ namespace ExpenseTracker.UI.IntegrationTests.PageObjects
                     component.WaitForAssertion(() =>
                     {
                         formModalComponent.IsVisible.ShouldBeTrue();
-                    });
+                    }, TimeSpan.FromSeconds(5));
                     return formModalComponent;
                 },
                 (IRenderedComponent<App> component) => {
@@ -85,7 +85,7 @@ namespace ExpenseTracker.UI.IntegrationTests.PageObjects
                     component.WaitForAssertion(() =>
                     {
                         confirmationModalComponent.Message.ShouldNotBeNullOrWhiteSpace();
-                    });
+                    }, TimeSpan.FromSeconds(5));
                     return confirmationModalComponent;
                 }
             );

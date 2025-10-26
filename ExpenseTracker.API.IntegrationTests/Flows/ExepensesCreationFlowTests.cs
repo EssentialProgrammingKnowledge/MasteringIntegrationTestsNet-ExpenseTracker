@@ -1,7 +1,7 @@
 ﻿using ExpenseTracker.API.Database;
 using ExpenseTracker.API.DTO;
 using ExpenseTracker.API.IntegrationTests.Setup.Auth;
-using ExpenseTracker.API.IntegrationTests.Setup.BaseTests.CollectionFixtures;
+using ExpenseTracker.API.IntegrationTests.Setup.ClassFixtures.BaseTests;
 using ExpenseTracker.API.IntegrationTests.Setup.Hosting;
 using ExpenseTracker.API.Models;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +14,7 @@ using Xunit.Abstractions;
 
 namespace ExpenseTracker.API.IntegrationTests.Flows
 {
-    public class ExepensesCreationFlowTests : BaseTestCollectionFixture
+    public class ExepensesCreationFlowTests : BaseTest
     {
         private const string CATEGORIES_URL = "/api/categories";
         private const string EXPENSES_URL = "/api/expenses";

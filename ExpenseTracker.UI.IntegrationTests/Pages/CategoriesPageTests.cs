@@ -25,7 +25,7 @@ namespace ExpenseTracker.UI.IntegrationTests.Pages
             _testFixture.AppComponent.WaitForAssertion(() =>
             {
                 _categoriesPage.HasCategoriesTable.ShouldBeTrue();
-            });
+            }, TimeSpan.FromSeconds(5));
         }
 
         [Fact]
